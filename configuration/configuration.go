@@ -20,6 +20,7 @@ type ServiceConfig struct {
 	DBConnection        string         `json:"dbconnection"`
 	RestfulEndpoint     string         `json:"restfulapi_endpoint"`
 	RestfultTLSEndpoint string         `json:"restfulapi_tlsendpoint"`
+	AMQPMessageBroker   string         `json:"amqp_message_broker"`
 }
 
 func ExtractConfiguration(filename string) (ServiceConfig, error) {
@@ -35,5 +36,8 @@ func ExtractConfiguration(filename string) (ServiceConfig, error) {
 		return conf, err
 	}
 	err = json.NewDecoder(file).Decode(&conf)
+	if broker := os.Getenv("AMQP_URL"); broker != "" {
+		conf.AMQPMessageBroker = broker
+	}
 	return conf, err
 }

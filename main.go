@@ -10,6 +10,8 @@ import (
 	_ "github.com/myevents/lib/msgqueue"
 	_ "github.com/myevents/lib/msgqueue/amqp"
 	"github.com/myevents/servicehandler"
+	"github.com/streadway/amqp"
+	 msgqueue_amqp "github.com/myevents/lib/msgqueue/amqp"
 )
 
 func main() {
@@ -17,6 +19,19 @@ func main() {
 	flag.Parse()
 
 	config, _ := configuration.ExtractConfiguration(*confPath)
+	conn, err := amqp.Dial(config.AMQPMessageBroker)
+
+	if err!=nil{
+		panic(err)
+	}
+
+	emitter,err:=msgqueue_amqp.NewAMQPEmitter(conn)
+	if err!=nil{
+		panic(err)
+	}
+	
+
+
 	fmt.Println("Connecting to database")
 	dbhandler, _ := dblayer.NewPersistenceLayer(config.DatabaseType, config.DBConnection)
 

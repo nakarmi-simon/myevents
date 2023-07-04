@@ -6,14 +6,18 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/myevents/contracts"
+	"github.com/myevents/lib/msgqueue"
 	"github.com/myevents/models"
 	persistence "github.com/myevents/persistence"
 )
 
 type eventServiceHandler struct {
-	dbhandler persistence.DatabaseHandler
+	dbhandler    persistence.DatabaseHandler
+	eventEmitter msgqueue.EventEmitter
 }
 
 func (eh *eventServiceHandler) findEventHandler(w http.ResponseWriter, r *http.Request) {
@@ -86,16 +90,26 @@ func (eh *eventServiceHandler) newEventHandler(w http.ResponseWriter, r *http.Re
 		fmt.Fprintf(w, "{error:%d %s}", id, err)
 		return
 	}
+
+	msg := contracts.EventCreatedEvent{
+		ID:         hex.EncodeToString(id),
+		Name:       string(event.Name),
+		LocationID: string(event.Location.ID),
+		Start:      time.Unix(event.StartDate, 0),
+		End:        time.Unix(event.EndDate, 0),
+	}
+	eh.eventEmitter.Emit(&msg)
 }
 
-func newEventHandler(databasehandler persistence.DatabaseHandler) *eventServiceHandler {
+func newEventHandler(databasehandler persistence.DatabaseHandler, eventEmitter msgqueue.EventEmitter) *eventServiceHandler {
 	return &eventServiceHandler{
-		dbhandler: databasehandler,
+		dbhandler:    databasehandler,
+		eventEmitter: eventEmitter,
 	}
 }
 
-func ServeAPI(endpoint string, tlsendpoint string, dbHandler persistence.DatabaseHandler) (chan error, chan error) {
-	handler := newEventHandler(dbHandler)
+func ServeAPI(endpoint string, tlsendpoint string, dbHandler persistence.DatabaseHandler, eventEmitter msgqueue.EventEmitter) (chan error, chan error) {
+	handler := newEventHandler(dbHandler, eventEmitter)
 	r := mux.NewRouter()
 
 	httpErrorChan := make(chan error)
